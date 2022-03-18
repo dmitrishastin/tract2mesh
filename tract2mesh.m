@@ -1,21 +1,61 @@
-function [V, F, DEC] = bundle2mesh
+function [V, F, C] = tract2mesh(varargin)
     
-    %generate_polygonal_cylinder
-
-    r = 0.1;        % radius
-    nv = 6;         % number of vertices at cross-section
+    %% parse inputs
     
-    tracks = simulate_streamline_bundle([], 1);
-    [V, F, DEC] = deal([]);    
-    anv = 0;        % current number of vertices to add
+    p = inputParser;
+    
+    % main inputs
+    addParameter(p, 'streamlines', []);     % streamlines provided as a cell array - synthetic if not provided
+    addParameter(p, 'radius', 0.1);         % individual streamline radius
+    addParameter(p, 'vertices', 6);         % number of vertices at cross-section
+    addParameter(p, 'colours', []);         % colour-coding: DEC, random, Nx3 matrix (colour per streamline). Returns streamlines indices if empty
+    addParameter(p, 'centre', true);        % will place tract centroid at the origin
+    
+    % synthetic bundles only - all optional
+    addParameter(p, 'nsl', []);             % number of streamlines
+    addParameter(p, 'step_size', 1);        % step size    
+    
+    parse(p, varargin{:});
+    fn = fieldnames(p.Results);
+    for i = 1:numel(fn)
+        eval([fn{i} ' = p.Results.' fn{i} ';']);
+    end
+    
+    %% prepare
+    
+    r = radius;
+    nv = vertices;
+    clear radius vertices
+    
+    % synthetise streamlines if needed
+    if isempty(streamlines)
+        streamlines = simulate_streamline_bundle(nsl, step_size);
+    end
+    
+    % centre streamlines if needed
+    if centre
+        BB = cellfun(@(x) [max(x) min(x)], streamlines, 'un', 0);
+        BBM = cell2mat(BB);
+        centroid = (max(BBM(:, 1:3)) + min(BBM(:, 4:6))) / 2;
+        streamlines = cellfun(@(x) x - repmat(centroid, [size(x, 1) 1]), streamlines, 'un', 0);
+    end
+    
+    if ~isempty(colours) && isnumeric(colours) && size(colours, 2) == 1
+        colours = repmat(colours, [1 3]);
+    end
+    
+    %% convert
+    
+    [V, F, C] = deal([]);    
+    anv = 0; % intercept for vertex enumeration (faces array)
     
     % generate cross-sectional disc    
     [dv, df] = gen_disc(nv, r);  
     
     % generate cylindroids
-    for i = 1:numel(tracks)
+    for i = 1:numel(streamlines)
        
-        sl = tracks{i};
+        sl = streamlines{i};
         n_pts = size(sl, 1);
         
         % gradient vectors - used for rotation and colour-coding
@@ -36,7 +76,6 @@ function [V, F, DEC] = bundle2mesh
         end
         V = [V; v1(:, 1:3)];
         F = [F; df + anv];
-        DEC = [DEC; repmat(rtv(1, :), [nv 1])];
        
         for j = 2:n_pts
             
@@ -49,7 +88,6 @@ function [V, F, DEC] = bundle2mesh
             end 
             
             V = [V; v1(:, 1:3)];
-            DEC = [DEC; repmat(rtv(j, :), [nv 1])];
             
             % generate the walls
             av = 1:nv;
@@ -67,10 +105,25 @@ function [V, F, DEC] = bundle2mesh
         F = [F; df + anv];
         anv = anv + nv;
         
-    end
-    
-    DEC = abs(DEC);
-    
+        % sort out colours
+        if nargout > 2           
+            if ~isempty(colours) && ischar(colours)
+                switch colours
+                    case 'DEC'
+                        v_idx = repmat(1:n_pts, [nv 1]);
+                        v_idx = v_idx(:);
+                        C = [C; abs(rtv(v_idx, :))];
+                    case 'random'
+                        slc = rand(1, 3);
+                        C = [C; repmat(slc, [n_pts * nv 1])];
+                end
+            elseif ~isempty(colours) && isnumeric(colours) && size(colours, 1) == length(streamlines)
+                C = [C; repmat(colours(i, :), [n_pts * nv 1])];
+            else                 
+                C = [C; ones(n_pts * nv, 1) * i];
+            end            
+        end
+    end    
 end
 
 function [v, f] = gen_disc(nf, r)

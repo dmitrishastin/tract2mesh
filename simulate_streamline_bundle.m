@@ -1,19 +1,17 @@
-function tracks = simulate_streamline_bundle(varargin)
+function tracks = simulate_streamline_bundle(nsl, step_size)
 
     % number of streamlines
-    nsl = randi(10 ^ 3);
-    if nargin && ~isempty(varargin{1})
-        nsl = varargin{1};
+    if isempty(nsl)
+        nsl = randi(10 ^ 3);
     end
     
-    % step size
-    step_size = 0.5;
-    if nargin > 1
-        step_size = varargin{2};
+    % step size    
+    if isempty(step_size)
+        step_size = 0.5;
     end    
     
     rad = 3;        % central radius
-    md = 10;        % maximum dimention
+    md = 10;        % maximum dimension
     n_pts = 1000;   % number of points in each curve
     
     %% generate centroid
@@ -74,9 +72,9 @@ end
 
 function p = gen_rand_poly(sz, n_pts)
 
-    % random polynomial
     poly_ord = randi([2 10]);
     poly_coef = rand(poly_ord, 1) .* (randi(10, poly_ord, 1) - 1) .* sign(rand(poly_ord, 1) - 0.5);
+    
     p = polyval(poly_coef, linspace(-sz/2, sz/2, n_pts));
     p = p - min(p);
     p = p / max(p) * sz;
