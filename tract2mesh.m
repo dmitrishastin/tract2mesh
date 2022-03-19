@@ -9,7 +9,7 @@ function [V, F, C] = tract2mesh(varargin)
     addParameter(p, 'radius', 0.1);         % individual streamline radius
     addParameter(p, 'vertices', 6);         % number of vertices at cross-section
     addParameter(p, 'colours', []);         % colour-coding: DEC, random, Nx3 matrix (colour per streamline). Returns streamlines indices if empty
-    addParameter(p, 'centre', true);        % will place tract centroid at the origin
+    addParameter(p, 'centre', true);        % places middle of tract at the origin
     
     % synthetic bundles only - all optional
     addParameter(p, 'nsl', []);             % number of streamlines
@@ -27,7 +27,7 @@ function [V, F, C] = tract2mesh(varargin)
     nv = vertices;
     clear radius vertices
     
-    % synthetise streamlines if needed
+    % create synthetic streamlines if needed
     if isempty(streamlines)
         streamlines = simulate_streamline_bundle(nsl, step_size);
     end
@@ -52,7 +52,7 @@ function [V, F, C] = tract2mesh(varargin)
     % generate cross-sectional disc    
     [dv, df] = gen_disc(nv, r);  
     
-    % generate cylindroids
+    % generate and grow segments
     for i = 1:numel(streamlines)
        
         sl = streamlines{i};
@@ -62,15 +62,14 @@ function [V, F, C] = tract2mesh(varargin)
         rtv = norm_vec([gradient(sl(:, 1)) gradient(sl(:, 2)) gradient(sl(:, 3))]);
         norot = all(abs(rtv) == repmat([0 0 1], [n_pts 1]), 2);
         
-        % rotation matrices for each cross-section corresponding to each streamline point
+        % pre-generate cross and dot products for rotation matrices
         cross_v = cross(repmat([0 0 1], [n_pts, 1]), rtv, 2);
         dot_v = dot(repmat([0 0 1], [n_pts, 1]), rtv, 2);
         
         % position the first disc
-        if ~norot(1)            
+        if ~norot(1)                                    
             R = rot_mtx(cross_v(1, :), dot_v(1, :), sl(1, :));
-            v1 = (R * [dv ones(nv, 1)]')';
-            
+            v1 = (R * [dv ones(nv, 1)]')';            
         else
             v1 = dv;
         end
@@ -79,7 +78,7 @@ function [V, F, C] = tract2mesh(varargin)
        
         for j = 2:n_pts
             
-            % position the vertices of the next disc
+            % position the vertices of the next disc             
             if ~norot(j)
                 R = rot_mtx(cross_v(j, :), dot_v(j, :), sl(j, :));
                 v1 = (R * [dv ones(nv, 1)]')';
@@ -128,6 +127,7 @@ end
 
 function [v, f] = gen_disc(nf, r)
 
+    % generate a mesh representation of a disc
     alpha = 2 * pi / nf; 
     v = [sin(alpha .* (0:nf - 1)); cos(alpha .* (0:nf - 1)); zeros(1, nf)]';
     v = (v - mean(v)) * r;
@@ -137,6 +137,7 @@ end
 
 function R = rot_mtx(cv, dv, O)
 
+    % generate transform matrix for each disc
     ssc = [0 -cv(3) cv(2); cv(3) 0 -cv(1); -cv(2) cv(1) 0];
     R = eye(3) + ssc + ssc ^ 2 * (1 - dv) / sqrt(sum(cv .^ 2)) ^ 2;
     R = [R(1, :) O(1); R(2, :) O(2); R(3, :) O(3); 0 0 0 1];    
@@ -145,6 +146,7 @@ end
 
 function v = norm_vec(v)
 
+    % normalise matrix of vectors
     v = v ./ repmat(sqrt(sum(v .^ 2, 2)), [1 3]);
 
 end

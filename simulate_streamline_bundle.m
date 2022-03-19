@@ -37,7 +37,7 @@ function tracks = simulate_streamline_bundle(nsl, step_size)
     dirvec = dirvec - ctr .* dot(dirvec, ctr);
     dirvec = dirvec ./ sqrt(sum(dirvec .^ 2, 2));  
     
-    % degree of distortion along each
+    % pre-generate degree of distortion along each point
     dist = linspace(-1, 1, n_pts)';
     
     tracks = cell(nsl, 1);
@@ -62,16 +62,13 @@ function tracks = simulate_streamline_bundle(nsl, step_size)
         far_down = (rcum_len - sl_bins(pt_loc)) ./ sl_len(pt_loc);
         tracks{i} = tracks{i}(pt_loc, :) + (tracks{i}(pt_loc + 1, :) - tracks{i}(pt_loc, :)) .* repmat(far_down, [1 3]);
         
-    end
-    
-    % center
-    tracks = cellfun(@(x) x - cm, tracks, 'un', 0);
-    
+    end    
 
 end
 
 function p = gen_rand_poly(sz, n_pts)
 
+    % generates a random polynomial to create a curved shape
     poly_ord = randi([2 10]);
     poly_coef = rand(poly_ord, 1) .* (randi(10, poly_ord, 1) - 1) .* sign(rand(poly_ord, 1) - 0.5);
     
