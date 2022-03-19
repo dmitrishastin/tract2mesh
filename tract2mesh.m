@@ -7,7 +7,7 @@ function [V, F, C] = tract2mesh(varargin)
     % main inputs
     addParameter(p, 'streamlines', []);     % streamlines provided as a cell array - synthetic if not provided
     addParameter(p, 'radius', 0.1);         % individual streamline radius
-    addParameter(p, 'vertices', 6);         % number of vertices at cross-section
+    addParameter(p, 'vertices', 6);         % number of vertices at cross-section (min: 3)
     addParameter(p, 'colours', []);         % colour-coding: DEC, random, Nx3 matrix (colour per streamline). Returns streamlines indices if empty
     addParameter(p, 'centre', true);        % places middle of tract at the origin
     
@@ -71,7 +71,7 @@ function [V, F, C] = tract2mesh(varargin)
             R = rot_mtx(cross_v(1, :), dot_v(1, :), sl(1, :));
             v1 = (R * [dv ones(nv, 1)]')';            
         else
-            v1 = dv;
+            v1 = dv + sl(1, :);
         end
         V = [V; v1(:, 1:3)];
         F = [F; df + anv];
@@ -83,7 +83,7 @@ function [V, F, C] = tract2mesh(varargin)
                 R = rot_mtx(cross_v(j, :), dot_v(j, :), sl(j, :));
                 v1 = (R * [dv ones(nv, 1)]')';
             else
-                v1 = dv;
+                v1 = dv + sl(j, :);
             end 
             
             V = [V; v1(:, 1:3)];
