@@ -35,7 +35,7 @@ function [V, F, C] = tract2mesh(varargin)
     % centre streamlines if needed
     if centre
         BB = cellfun(@(x) [max(x) min(x)], streamlines, 'un', 0);
-        BBM = cell2mat(BB);
+        BBM = cell2mat(BB');
         centroid = (max(BBM(:, 1:3)) + min(BBM(:, 4:6))) / 2;
         streamlines = cellfun(@(x) x - repmat(centroid, [size(x, 1) 1]), streamlines, 'un', 0);
     end
@@ -65,42 +65,36 @@ function [V, F, C] = tract2mesh(varargin)
         % pre-generate cross and dot products for rotation matrices
         cross_v = cross(repmat([0 0 1], [n_pts, 1]), rtv, 2);
         dot_v = dot(repmat([0 0 1], [n_pts, 1]), rtv, 2);
-        
-        % position the first disc
-        if ~norot(1)                                    
-            R = rot_mtx(cross_v(1, :), dot_v(1, :), sl(1, :));
-            v1 = (R * [dv ones(nv, 1)]')';            
-        else
-            v1 = dv + sl(1, :);
-        end
-        V = [V; v1(:, 1:3)];
-        F = [F; df + anv];
        
-        for j = 2:n_pts
+        for j = 1:n_pts
             
-            % position the vertices of the next disc             
+            % place disc vertices around each streamline point
             if ~norot(j)
                 R = rot_mtx(cross_v(j, :), dot_v(j, :), sl(j, :));
                 v1 = (R * [dv ones(nv, 1)]')';
             else
                 v1 = dv + sl(j, :);
-            end 
-            
+            end             
             V = [V; v1(:, 1:3)];
             
-            % generate the walls
+            % first point: cap off the streamline, no side walls
+            if j == 1
+                F = [F; df + anv];
+                continue
+            end
+            
+            % subseqent points: generate walls, leave cross-section empty
             av = 1:nv;
             a = [av; av+1; av+nv+1]';
             b = [av; av+nv+1; av+nv]';
             a(end, :) = [nv 1 nv+1];
-            b(end, :) = [nv nv+1 nv+nv];
-            
+            b(end, :) = [nv nv+1 nv+nv];            
             F = [F; a + anv; b + anv];
             anv = anv + nv;
             
         end
         
-        % final disc        
+        % final point: cap off the streamline
         F = [F; df + anv];
         anv = anv + nv;
         
@@ -130,7 +124,7 @@ function [v, f] = gen_disc(nf, r)
     % generate a mesh representation of a disc
     alpha = 2 * pi / nf; 
     v = [sin(alpha .* (0:nf - 1)); cos(alpha .* (0:nf - 1)); zeros(1, nf)]';
-    v = (v - mean(v)) * r;
+    v = (v - repmat(mean(v), [size(v, 1) 1])) * r;
     f = [ones(1, nf - 2); 2:nf - 1; 3:nf]';        
 
 end
