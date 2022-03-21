@@ -1,4 +1,4 @@
-function [V, F, C] = tract2mesh(varargin)
+function [V, F, C] = tract2mesh_parfor(varargin)
     
     %% parse inputs
     
@@ -22,17 +22,20 @@ function [V, F, C] = tract2mesh(varargin)
         eval([fn{i} ' = p.Results.' fn{i} ';']);
     end
     
-    % send to parfor branch if desired
-    if ~isempty(cores)
-        [V, F, C] = tract2mesh_parfor(varargin{:});
-        return
-    end
-    
     %% prepare
     
     r = radius;
     nv = vertices;
     clear radius vertices
+        
+    PP = gcp('nocreate');
+    if isempty(PP) || PP.NumWorkers ~= cores
+        delete(PP);
+        cust_clust = parcluster; 
+        cust_clust.NumWorkers = cores;
+        parpool(cust_clust, 'IdleTimeout', 300);
+    end
+    clear PP    
     
     % create synthetic streamlines if needed
     if isempty(streamlines)
@@ -53,17 +56,18 @@ function [V, F, C] = tract2mesh(varargin)
     
     %% convert
     
-    [V, F, C] = deal([]);    
-    anv = 0; % intercept for vertex enumeration (faces array)
+    nsl = numel(streamlines); % number of streamlines
+    [V, F, C] = deal(cell(nsl, 1));       
     
     % generate cross-sectional disc    
-    [dv, df] = gen_disc(nv, r);      
+    [dv, df] = gen_disc(nv, r);  
     
     % generate and grow segments
-    for i = 1:numel(streamlines)
+    parfor i = 1:nsl
        
         sl = streamlines{i};
         n_pts = size(sl, 1);
+        anv = 0; % intercept for vertex enumeration (faces array)        
         
         % gradient vectors - used for rotation and colour-coding
         rtv = norm_vec([gradient(sl(:, 1)) gradient(sl(:, 2)) gradient(sl(:, 3))]);
@@ -82,11 +86,11 @@ function [V, F, C] = tract2mesh(varargin)
             else
                 v1 = dv + sl(j, :);
             end             
-            V = [V; v1(:, 1:3)];
+            V{i} = [V{i}; v1(:, 1:3)];
             
             % first point: cap off the streamline, no side walls
             if j == 1
-                F = [F; df + anv];
+                F{i} = df;
                 continue
             end
             
@@ -96,34 +100,42 @@ function [V, F, C] = tract2mesh(varargin)
             b = [av; av+nv+1; av+nv]';
             a(end, :) = [nv 1 nv+1];
             b(end, :) = [nv nv+1 nv+nv];            
-            F = [F; a + anv; b + anv];
+            F{i} = [F{i}; a + anv; b + anv];
             anv = anv + nv;
             
         end
         
         % final point: cap off the streamline
-        F = [F; df + anv];
-        anv = anv + nv;
+        F{i} = [F{i}; df + anv];
         
         % sort out colours
-        if nargout > 2           
-            if ~isempty(colours) && ischar(colours)
-                switch colours
-                    case 'DEC'
-                        v_idx = repmat(1:n_pts, [nv 1]);
-                        v_idx = v_idx(:);
-                        C = [C; abs(rtv(v_idx, :))];
-                    case 'random'
-                        slc = rand(1, 3);
-                        C = [C; repmat(slc, [n_pts * nv 1])];
-                end
-            elseif ~isempty(colours) && isnumeric(colours) && size(colours, 1) == length(streamlines)
-                C = [C; repmat(colours(i, :), [n_pts * nv 1])];
-            else                 
-                C = [C; ones(n_pts * nv, 1) * i];
-            end            
+        if ~isempty(colours) && ischar(colours)
+            switch colours
+                case 'DEC'
+                    v_idx = repmat(1:n_pts, [nv 1]);
+                    v_idx = v_idx(:);
+                    C{i} = abs(rtv(v_idx, :));
+                case 'random'
+                    slc = rand(1, 3);
+                    C{i} = repmat(slc, [n_pts * nv 1]);
+            end
+        elseif ~isempty(colours) && isnumeric(colours) && size(colours, 1) == nsl
+            C{i} = repmat(colours(i, :), [n_pts * nv 1]);
+        else                 
+            C{i} = ones(n_pts * nv, 1) * i;
         end
-    end    
+    end
+        
+    F2 = F{1};
+    anv = 0;
+    for i = 2:nsl
+        anv = anv + size(V{i - 1}, 1);
+        F2 = [F2; F{i} + anv];
+    end
+    F = F2; 
+    V = cell2mat(V);
+    C = cell2mat(C);
+    
 end
 
 function [v, f] = gen_disc(nf, r)

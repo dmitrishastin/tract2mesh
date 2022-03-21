@@ -16,6 +16,7 @@ Main inputs:
 - **radius**: desired radius of 3D streamlines. Default: 0.1
 - **vertrices**: number of mesh vertices at cross-section. Higher numbers will make streamlines more rounded whilst increasing output size. Default: 6
 - **centre**: places the middle of the tract at the origin of the coordinate space. Default: true
+- **cores**: number of threads if parallel processing is desired. 
 - **colours**: choose a colouring scheme produced. If not chosen, returns mesh vertex indices corresponding to individual streamlines. Options: 
   - DEC (for direction encoded colouring)
   - random (for random colour allocation per individual streamline)
