@@ -36,27 +36,25 @@ Arguments are provided in a standard MATLAB Name-Value pair fashion.
 - **F**: mesh face connectivity
 - **C**: mesh colour scheme, with rows representing individual vertices and columns representing R,G,B. If colours input not provided, returns indices of individual streamlines instead.
 
-## Example 1
+## Example 1 - Direction Encoded Streamlines
 ```
 % load streamlines from a .tck file
 tck = read_mrtrix_tracts('tract.tck');
-streamlines = tck.data;
 
 % convert
-[V, F, C] = tract2mesh('streamlines', streamlines, 'radius', 0.3, 'vertices', 7, 'centre', false, 'colours', 'DEC');
+[V, F, C] = tract2mesh('streamlines', tck.data, 'radius', 0.3, 'vertices', 7, 'centre', false, 'colours', 'DEC');
 ```
 
-## Example 2
+## Example 2 - Fractional Anisotropy Map 
 ```
 % load streamlines from a .tck file
 tck = read_mrtrix_tracts('tract.tck');
-streamlines = tck.data;
 
-% load streamline per-vertex scalar data from a .tsf file
+% load per-vertex scalar data from a pre-generated .tsf file
 tsf = read_mrtrix_tsf('tract_FA.tsf');
 
 % convert
-[V, F, C] = tract2mesh('streamlines', streamlines, 'radius', 0.3, 'vertices', 3, 'centre', false, 'colours', tsf.data);
+[V, F, C] = tract2mesh('streamlines', tck.data, 'vertices', 3, 'colours', tsf.data);
 
 % use a colourmap of your choice (scalar to colours)
 C = convert_colourmap(C, 'cool', [0 1]);
