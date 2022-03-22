@@ -80,7 +80,7 @@ function [V, F, C] = tract2mesh(varargin)
             
             % Rodrigues formula
             edge_v = ppv .* cos(alpha) + cross(rtv, ppv, 2) .* sin(alpha) + ...
-                rtv .* dot(rtv, ppv, 2) .* (1 - cos(alpha));            
+                rtv .* repmat(dot(rtv, ppv, 2), [1 3]) .* (1 - cos(alpha));            
             
             % add streamline vertices + their perpendicular vectors
             % rotated by alpha scaled by radius

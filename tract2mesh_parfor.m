@@ -20,13 +20,7 @@ function [V, F, C] = tract2mesh_parfor(varargin)
     fn = fieldnames(p.Results);
     for i = 1:numel(fn)
         eval([fn{i} ' = p.Results.' fn{i} ';']);
-    end
-    
-    % send to parfor branch if desired
-    if ~isempty(cores)
-        [V, F, C] = tract2mesh_parfor(varargin{:});
-        return
-    end
+    end   
     
     %% prepare
     
@@ -89,7 +83,7 @@ function [V, F, C] = tract2mesh_parfor(varargin)
             
             % Rodrigues formula
             edge_v = ppv .* cos(alpha) + cross(rtv, ppv, 2) .* sin(alpha) + ...
-                rtv .* dot(rtv, ppv, 2) .* (1 - cos(alpha));            
+                rtv .* repmat(dot(rtv, ppv, 2), [1 3]) .* (1 - cos(alpha));            
             
             % add streamline vertices + their perpendicular vectors
             % rotated by alpha scaled by radius
