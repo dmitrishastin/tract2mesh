@@ -22,12 +22,17 @@ function [V, F, C] = tract2mesh_parfor(varargin)
         eval([fn{i} ' = p.Results.' fn{i} ';']);
     end
     
+    % send to parfor branch if desired
+    if ~isempty(cores)
+        [V, F, C] = tract2mesh_parfor(varargin{:});
+        return
+    end
+    
     %% prepare
     
-    r = radius;
-    nv = vertices;
+    r = radius; nv = vertices;
     clear radius vertices
-        
+    
     PP = gcp('nocreate');
     if isempty(PP) || PP.NumWorkers ~= cores
         delete(PP);
@@ -35,7 +40,7 @@ function [V, F, C] = tract2mesh_parfor(varargin)
         cust_clust.NumWorkers = cores;
         parpool(cust_clust, 'IdleTimeout', 300);
     end
-    clear PP    
+    clear PP  
     
     % create synthetic streamlines if needed
     if isempty(streamlines)
@@ -59,102 +64,83 @@ function [V, F, C] = tract2mesh_parfor(varargin)
     nsl = numel(streamlines); % number of streamlines
     [V, F, C] = deal(cell(nsl, 1));       
     
-    % generate cross-sectional disc    
-    [dv, df] = gen_disc(nv, r);  
+    grad_diff = @(x) norm_vec([gradient(x(:, 1)) gradient(x(:, 2)) gradient(x(:, 3))]);
     
-    % generate and grow segments
-    parfor i = 1:nsl
+    % generate mesh for individual streamlines
+    parfor i = 1:numel(streamlines)
        
         sl = streamlines{i};
-        n_pts = size(sl, 1);
-        anv = 0; % intercept for vertex enumeration (faces array)        
+        n_pts = size(sl, 1);                
         
         % gradient vectors - used for rotation and colour-coding
-        rtv = norm_vec([gradient(sl(:, 1)) gradient(sl(:, 2)) gradient(sl(:, 3))]);
-        norot = all(abs(rtv) == repmat([0 0 1], [n_pts 1]), 2);
+        rtv = grad_diff(sl);
         
-        % pre-generate cross and dot products for rotation matrices
-        cross_v = cross(repmat([0 0 1], [n_pts, 1]), rtv, 2);
-        dot_v = dot(repmat([0 0 1], [n_pts, 1]), rtv, 2);
-       
-        for j = 1:n_pts
+        % upwards vectors - avoid twists
+        uwv = repmat([0 0 1], [n_pts 1]);
+        
+        % make uwv perpendicular
+        ppv = norm_vec(uwv - repmat(dot(uwv, rtv, 2), [1 3]) .* rtv);
+        
+        % populate "edges" and "faces" of the streamlines
+        for j = 1:nv
+        
+            % rotation angle
+            alpha = 2 * pi * j / nv; 
             
-            % place disc vertices around each streamline point
-            if ~norot(j)
-                R = rot_mtx(cross_v(j, :), dot_v(j, :), sl(j, :));
-                v1 = (R * [dv ones(nv, 1)]')';
-            else
-                v1 = dv + sl(j, :);
-            end             
-            V{i} = [V{i}; v1(:, 1:3)];
+            % Rodrigues formula
+            edge_v = ppv .* cos(alpha) + cross(rtv, ppv, 2) .* sin(alpha) + ...
+                rtv .* dot(rtv, ppv, 2) .* (1 - cos(alpha));            
             
-            % first point: cap off the streamline, no side walls
-            if j == 1
-                F{i} = df;
-                continue
-            end
+            % add streamline vertices + their perpendicular vectors
+            % rotated by alpha scaled by radius
+            V{i} = [V{i}; sl + edge_v * r]; 
             
-            % subseqent points: generate walls, leave cross-section empty
-            av = 1:nv;
-            a = [av; av+1; av+nv+1]';
-            b = [av; av+nv+1; av+nv]';
-            a(end, :) = [nv 1 nv+1];
-            b(end, :) = [nv nv+1 nv+nv];            
-            F{i} = [F{i}; a + anv; b + anv];
-            anv = anv + nv;
+            % fill with faces            
+            av = (1:n_pts - 1) + n_pts * (j - 1);
+            a = [av; av + n_pts + 1; av + n_pts];
+            b = [av; av + 1; av + n_pts + 1];
+            F{i} = [F{i}; a'; b'];
             
         end
         
-        % final point: cap off the streamline
-        F{i} = [F{i}; df + anv];
+        % close the sides
+        F{i} = mod(F{i} - 1, size(V{i}, 1)) + 1;
+        
+        % put the lids on        
+        f1 = [ones(1, nv - 2); (1:nv - 2) * n_pts + 1; (2:nv - 1) * n_pts + 1]';
+        f2 = f1 + n_pts - 1;
+        F{i} = [F{i}; f1(:, [2 1 3]); f2];
         
         % sort out colours
-        if ~isempty(colours) && ischar(colours)
-            switch colours
-                case 'DEC'
-                    v_idx = repmat(1:n_pts, [nv 1]);
-                    v_idx = v_idx(:);
-                    C{i} = abs(rtv(v_idx, :));
-                case 'random'
-                    slc = rand(1, 3);
-                    C{i} = repmat(slc, [n_pts * nv 1]);
-            end
-        elseif ~isempty(colours) && isnumeric(colours) && size(colours, 1) == nsl
-            C{i} = repmat(colours(i, :), [n_pts * nv 1]);
-        else                 
+        if ~isempty(colours) && ischar(colours) && strcmp(colours, 'DEC')
+            v_idx = repmat(1:n_pts, [1 nv]);
+            v_idx = v_idx(:);
+            C{i} = abs(rtv(v_idx, :));
+        else
             C{i} = ones(n_pts * nv, 1) * i;
         end
     end
-        
-    F2 = F{1};
-    anv = 0;
-    for i = 2:nsl
-        anv = anv + size(V{i - 1}, 1);
-        F2 = [F2; F{i} + anv];
-    end
-    F = F2; 
-    V = cell2mat(V);
-    C = cell2mat(C);
     
-end
-
-function [v, f] = gen_disc(nf, r)
-
-    % generate a mesh representation of a disc
-    alpha = 2 * pi / nf; 
-    v = [sin(alpha .* (0:nf - 1)); cos(alpha .* (0:nf - 1)); zeros(1, nf)]';
-    v = (v - repmat(mean(v), [size(v, 1) 1])) * r;
-    f = [ones(1, nf - 2); 2:nf - 1; 3:nf]';        
-
-end
-
-function R = rot_mtx(cv, dv, O)
-
-    % generate transform matrix for each disc
-    ssc = [0 -cv(3) cv(2); cv(3) 0 -cv(1); -cv(2) cv(1) 0];
-    R = eye(3) + ssc + ssc ^ 2 * (1 - dv) / sqrt(sum(cv .^ 2)) ^ 2;
-    R = [R(1, :) O(1); R(2, :) O(2); R(3, :) O(3); 0 0 0 1];    
-
+    nvc = cellfun(@(x) size(x, 1), V); % number of vertices per cell
+    cnvc = [0; cumsum(nvc)]; % cumulative minus the first
+    nfc = cellfun(@(x) size(x, 1), F); % number of faces per cell
+    cnfc = [0; cumsum(nfc)];
+    V = cell2mat(V);    
+    F = cell2mat(F);
+    C = cell2mat(C);    
+    for i = 1:nsl
+        F(cnfc(i) + 1:cnfc(i + 1), :) = F(cnfc(i) + 1:cnfc(i + 1), :) + cnvc(i);
+    end
+    
+    % sort out colours
+    if nargout > 2        
+        if ~isempty(colours) && ischar(colours) && strcmp(colours, 'random')            
+            slc = rand(nsl, 3);
+            C = slc(C, :);
+        elseif ~isempty(colours) && isnumeric(colours) && size(colours, 1) == length(streamlines)
+            C = colours(C, :);
+        end            
+    end
 end
 
 function v = norm_vec(v)
