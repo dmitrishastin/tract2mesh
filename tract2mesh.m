@@ -104,10 +104,14 @@ function [V, F, C] = tract2mesh(varargin)
         
         % sort out colours
         if nargout > 2 
-            if ~isempty(colours) && ischar(colours) && strcmp(colours, 'DEC')
+            if ~isempty(colours) && (ischar(colours) && strcmp(colours, 'DEC') || iscell(colours))
                 v_idx = repmat(1:n_pts, [1 nv]);
                 v_idx = v_idx(:);
-                C{i} = abs(rtv(v_idx, :));
+                if iscell(colours)
+                    C{i} = colours{i}(v_idx);
+                else
+                    C{i} = abs(rtv(v_idx, :));
+                end
             else
                 C{i} = ones(n_pts * nv, 1) * i;
             end

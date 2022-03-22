@@ -21,6 +21,7 @@ Main inputs:
   - DEC (for direction encoded colouring)
   - random (for random colour allocation per individual streamline)
   - Nx3 matrix of chosen colours where N is the number of streamlines and columns represent R,G,B
+  - Nx1 cell array such that N is the number of streamlines and each cell contains values per streamline vertex (e.g., tsf file)
 
 Inputs for synthetic tract generation:
 
@@ -35,7 +36,7 @@ Arguments are provided in a standard MATLAB Name-Value pair fashion.
 - **F**: mesh face connectivity
 - **C**: mesh colour scheme, with rows representing individual vertices and columns representing R,G,B. If colours input not provided, returns indices of individual streamlines instead.
 
-## Example
+## Example 1
 ```
 % load streamlines from a .tck file
 tck = read_mrtrix_tracts('tract.tck');
@@ -44,9 +45,25 @@ streamlines = tck.data;
 % convert
 [V, F, C] = tract2mesh('streamlines', streamlines, 'radius', 0.3, 'vertices', 7, 'centre', false, 'colours', 'DEC');
 ```
+
+## Example 2
+```
+% load streamlines from a .tck file
+tck = read_mrtrix_tracts('tract.tck');
+streamlines = tck.data;
+
+% load streamline per-vertex scalar data from a .tsf file
+tsf = read_mrtrix_tsf('tract_FA.tsf');
+
+% convert
+[V, F, C] = tract2mesh('streamlines', streamlines, 'radius', 0.3, 'vertices', 3, 'centre', false, 'colours', tsf.data);
+
+% use a colourmap of your choice (scalar to colours)
+C = convert_colourmap(C, 'cool', [0 1]);
+```
 ## External resources
 
 - **Getting tracts into MATLAB**: depends on the format. [MRtrix](https://www.mrtrix.org) comes with the MATLAB script (read_mrtrix_tracks) for reading .tck format.
-- **Saving mesh objects**: down to user, one example that seems to work well with MS Office is [write3mf](https://uk.mathworks.com/matlabcentral/fileexchange/66224-write3mf) (written for Windows, may have to replace backslashes with 'filesep' in file/dir paths for Linux/Unix). Read about mesh formats for MS Office [here](https://support.microsoft.com/en-us/office/3d-content-guidelines-for-microsoft-03a7b493-d549-4f1a-9735-f2457adf6261).
+- **Saving mesh objects**: down to user, one example that seems to work well with MS Office is [write3mf](https://github.com/cvergari/write3mf.git). Read about mesh formats for MS Office [here](https://support.microsoft.com/en-us/office/3d-content-guidelines-for-microsoft-03a7b493-d549-4f1a-9735-f2457adf6261).
 - **More on using mesh objects with MS Office**: ["Get creative with 3D models"](https://support.microsoft.com/en-us/office/get-creative-with-3d-models-ec5feb79-b0af-47f6-a885-151fcc88ac0a) and ["3D animation effects in PowerPoint"](https://support.microsoft.com/en-us/office/3d-animation-effects-in-powerpoint-6a0d6f0e-fd1e-4786-8e33-089375466d60)
  
