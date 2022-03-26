@@ -15,17 +15,26 @@ function C = convert_colourmap(C, map, varargin)
     %           M = rand(16, 3); C = convert_colourmap(C, M); - will generate a colourmap of 16 random colours then allocate them to C based on C values
 
     % set up scaling
-    if nargin > 2
+    if nargin > 2 && ~isempty(varargin{1})
         scl = varargin{1};
     else
         scl = [min(C(:)) max(C(:))];
+    end
+    
+    % sort if cell
+    isc = false;
+    if iscell(C)
+        isc = true;
+        sll = cellfun(@length, C);
+        asl = [0 cumsum(sll)];
+        C = cell2mat(C(:));
     end
     
     % in case no mapping is needed
     if isempty(map) || size(C, 2) == 3
         
         % rescale if requested
-        if nargin > 2
+        if nargin > 2 && ~isempty(varargin{1})
             scl = varargin{1};
             C = (C - scl(1)) / scl(2);
         end
@@ -35,7 +44,8 @@ function C = convert_colourmap(C, map, varargin)
             C = repmat(C, [1 3]);
         end
         
-        check_range(C);        
+        check_range(C);    
+        C = back2cell(C, asl, isc);
         return
         
     end
@@ -57,6 +67,7 @@ function C = convert_colourmap(C, map, varargin)
     C = map(binned_c, :);
     
     check_range(C);
+    C = back2cell(C, asl, isc);
     
 end
 
@@ -67,4 +78,18 @@ function check_range(C)
         warning('C is out of [0 1] range')
     end
 
+end
+
+function C2 = back2cell(C, asl, isc)
+
+    if ~isc
+        C2 = C;
+        return
+    end
+    
+    nsl = numel(asl) - 1;
+    C2 = cell(nsl, 1);
+    for i = 1:nsl
+        C2{i} = C(asl(i)+1:asl(i+1), :);
+    end
 end

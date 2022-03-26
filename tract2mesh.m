@@ -100,7 +100,7 @@ function [V, F, C] = tract2mesh(varargin)
         % put the lids on        
         f1 = [ones(1, nv - 2); (1:nv - 2) * n_pts + 1; (2:nv - 1) * n_pts + 1]';
         f2 = f1 + n_pts - 1;
-        F{i} = [F{i}; f1(:, [2 1 3]); f2];
+        F{i} = [F{i}; f1; f2(:, [2 1 3])];
         
         % sort out colours
         if nargout > 2 
@@ -138,6 +138,8 @@ function [V, F, C] = tract2mesh(varargin)
             C = colours(C, :);
         end            
     end
+    
+    F = F(:, [2 1 3]);
 end
 
 function v = norm_vec(v)
