@@ -62,7 +62,7 @@ C = convert_colourmap(C, 'cool', [0 1]);
 ## External resources
 
 - **Getting tracts into MATLAB**: depends on the format. [MRtrix](https://www.mrtrix.org) comes with the MATLAB script (read_mrtrix_tracks) for reading .tck format.
-- **Saving mesh objects**: down to user, one example that seems to work well with MS Office is [write3mf](https://github.com/cvergari/write3mf.git). An alternative is my own [GLB converter](https://github.com/dmitrishastin/glb_matlab) - seems to work well (as judged by [viewing online](https://gltf-viewer.donmccurdy.com/)) but output does not load in MS Office. Read about mesh formats for MS Office [here](https://support.microsoft.com/en-us/office/3d-content-guidelines-for-microsoft-03a7b493-d549-4f1a-9735-f2457adf6261). 
+- **Saving mesh objects**: down to user, one example that seems to work well with MS Office is [write3mf](https://github.com/cvergari/write3mf.git). An alternative is my own [matlab2glb converter](https://github.com/dmitrishastin/glb_matlab) - appears to function correctly (as judged by [viewing the output online](https://gltf-viewer.donmccurdy.com/)) but the files do not load in MS Office. Read about mesh formats for MS Office [here](https://support.microsoft.com/en-us/office/3d-content-guidelines-for-microsoft-03a7b493-d549-4f1a-9735-f2457adf6261). 
 - **More on using mesh objects with MS Office**: ["Get creative with 3D models"](https://support.microsoft.com/en-us/office/get-creative-with-3d-models-ec5feb79-b0af-47f6-a885-151fcc88ac0a) and ["3D animation effects in PowerPoint"](https://support.microsoft.com/en-us/office/3d-animation-effects-in-powerpoint-6a0d6f0e-fd1e-4786-8e33-089375466d60)
  
 ## Thanks
