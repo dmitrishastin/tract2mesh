@@ -9,7 +9,7 @@ function [V, F, C] = tract2mesh(varargin)
     addParameter(p, 'radius', 0.1);         % individual streamline radius
     addParameter(p, 'vertices', 6);         % number of vertices at cross-section (min: 3)
     addParameter(p, 'colours', []);         % colour-coding: DEC, random, Nx3 matrix (colour per streamline). Returns streamlines indices if empty
-    addParameter(p, 'centre', true);        % places middle of tract at the origin
+    addParameter(p, 'centre', false);       % places middle of tract at the origin
     addParameter(p, 'cores', []);           % number of cores for parallel processing. No parallel processing if empty
     
     % synthetic bundles only - all optional

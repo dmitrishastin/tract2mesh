@@ -23,6 +23,7 @@ function C = convert_colourmap(C, map, varargin)
     
     % sort if cell
     isc = false;
+    asl = [];
     if iscell(C)
         isc = true;
         sll = cellfun(@length, C);
