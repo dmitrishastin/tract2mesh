@@ -1,32 +1,6 @@
-function [V, F, C] = tract2mesh_parfor(varargin)
+function [V, F, C] = tract2mesh_parfor(streamlines, r, nv, colours, centre, cores)
     
-    %% parse inputs
-    
-    p = inputParser;
-    
-    % main inputs
-    addParameter(p, 'streamlines', []);     % streamlines provided as a cell array - synthetic if not provided
-    addParameter(p, 'radius', 0.1);         % individual streamline radius
-    addParameter(p, 'vertices', 6);         % number of vertices at cross-section (min: 3)
-    addParameter(p, 'colours', []);         % colour-coding: DEC, random, Nx3 matrix (colour per streamline). Returns streamlines indices if empty
-    addParameter(p, 'centre', true);        % places middle of tract at the origin
-    addParameter(p, 'cores', []);           % number of cores for parallel processing. No parallel processing if empty
-    
-    % synthetic bundles only - all optional
-    addParameter(p, 'nsl', []);             % number of streamlines
-    addParameter(p, 'step_size', 1);        % step size    
-    
-    parse(p, varargin{:});
-    fn = fieldnames(p.Results);
-    for i = 1:numel(fn)
-        eval([fn{i} ' = p.Results.' fn{i} ';']);
-    end   
-    
-    %% prepare
-    
-    r = radius; nv = vertices;
-    clear radius vertices
-    
+    %% prepare    
     PP = gcp('nocreate');
     if isempty(PP) || PP.NumWorkers ~= cores
         delete(PP);
@@ -35,23 +9,6 @@ function [V, F, C] = tract2mesh_parfor(varargin)
         parpool(cust_clust, 'IdleTimeout', 300);
     end
     clear PP  
-    
-    % create synthetic streamlines if needed
-    if isempty(streamlines)
-        streamlines = simulate_streamline_bundle(nsl, step_size);
-    end
-    
-    % centre streamlines if needed
-    if centre
-        BB = cellfun(@(x) [max(x) min(x)], streamlines, 'un', 0);
-        BBM = cell2mat(BB');
-        centroid = (max(BBM(:, 1:3)) + min(BBM(:, 4:6))) / 2;
-        streamlines = cellfun(@(x) x - repmat(centroid, [size(x, 1) 1]), streamlines, 'un', 0);
-    end
-    
-    if ~isempty(colours) && isnumeric(colours) && size(colours, 2) == 1
-        colours = repmat(colours, [1 3]);
-    end
     
     %% convert
     
@@ -106,18 +63,22 @@ function [V, F, C] = tract2mesh_parfor(varargin)
         F{i} = [F{i}; f1(:, [2 1 3]); f2];
         
         % sort out colours
-        if ~isempty(colours) && ischar(colours) && strcmp(colours, 'DEC')
+        if ~isempty(colours) && (ischar(colours) && strcmp(colours, 'DEC') || iscell(colours))
             v_idx = repmat(1:n_pts, [1 nv]);
             v_idx = v_idx(:);
-            C{i} = abs(rtv(v_idx, :));
+            if iscell(colours)
+                C{i} = colours{i}(v_idx, :);
+            else
+                C{i} = abs(rtv(v_idx, :));
+            end
         else
             C{i} = ones(n_pts * nv, 1) * i;
         end
     end
     
-    nvc = cellfun(@(x) size(x, 1), V); % number of vertices per cell
-    cnvc = [0; cumsum(nvc)]; % cumulative minus the first
-    nfc = cellfun(@(x) size(x, 1), F); % number of faces per cell
+    nvc = cellfun(@(x) size(x, 1), V);  % number of vertices per cell
+    cnvc = [0; cumsum(nvc)];            % cumulative minus the first
+    nfc = cellfun(@(x) size(x, 1), F);  % number of faces per cell
     cnfc = [0; cumsum(nfc)];
     V = cell2mat(V);    
     F = cell2mat(F);

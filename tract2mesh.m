@@ -22,12 +22,6 @@ function [V, F, C] = tract2mesh(varargin)
         eval([fn{i} ' = p.Results.' fn{i} ';']);
     end
     
-    % send to parfor branch if desired
-    if ~isempty(cores)
-        [V, F, C] = tract2mesh_parfor(varargin{:});
-        return
-    end
-    
     %% prepare
     
     r = radius; nv = vertices;
@@ -48,6 +42,12 @@ function [V, F, C] = tract2mesh(varargin)
     
     if ~isempty(colours) && isnumeric(colours) && size(colours, 2) == 1
         colours = repmat(colours, [1 3]);
+    end
+	
+	% send to parfor branch if desired
+    if ~isempty(cores)
+        [V, F, C] = tract2mesh_parfor(streamlines, r, nv, colours, centre, cores);
+        return
     end
     
     %% convert
@@ -108,7 +108,7 @@ function [V, F, C] = tract2mesh(varargin)
                 v_idx = repmat(1:n_pts, [1 nv]);
                 v_idx = v_idx(:);
                 if iscell(colours)
-                    C{i} = colours{i}(v_idx);
+                    C{i} = colours{i}(v_idx, :);
                 else
                     C{i} = abs(rtv(v_idx, :));
                 end
@@ -118,9 +118,9 @@ function [V, F, C] = tract2mesh(varargin)
         end
     end
     
-    nvc = cellfun(@(x) size(x, 1), V); % number of vertices per cell
-    cnvc = [0; cumsum(nvc)]; % cumulative minus the first
-    nfc = cellfun(@(x) size(x, 1), F); % number of faces per cell
+    nvc = cellfun(@(x) size(x, 1), V);  % number of vertices per cell
+    cnvc = [0; cumsum(nvc)];            % cumulative minus the first
+    nfc = cellfun(@(x) size(x, 1), F);  % number of faces per cell
     cnfc = [0; cumsum(nfc)];
     V = cell2mat(V);    
     F = cell2mat(F);

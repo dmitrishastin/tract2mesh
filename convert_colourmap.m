@@ -13,13 +13,6 @@ function C = convert_colourmap(C, map, varargin)
     %           C = convert_colourmap(C, 'jet'); - will allocate jet colourmap values to C scaled at min-max of C
     %           C = convert_colourmap(C, 'jet', [0 1]) - as above but scaled at [0 1]    
     %           M = rand(16, 3); C = convert_colourmap(C, M); - will generate a colourmap of 16 random colours then allocate them to C based on C values
-
-    % set up scaling
-    if nargin > 2 && ~isempty(varargin{1})
-        scl = varargin{1};
-    else
-        scl = [min(C(:)) max(C(:))];
-    end
     
     % sort if cell
     isc = false;
@@ -29,6 +22,13 @@ function C = convert_colourmap(C, map, varargin)
         sll = cellfun(@length, C);
         asl = [0 cumsum(sll)];
         C = cell2mat(C(:));
+    end
+    
+    % set up scaling
+    if nargin > 2 && ~isempty(varargin{1})
+        scl = varargin{1};
+    else
+        scl = [min(C(:)) max(C(:))];
     end
     
     % in case no mapping is needed
@@ -60,7 +60,7 @@ function C = convert_colourmap(C, map, varargin)
     end
     
     % rescale
-    C = (C - scl(1)) / scl(2);
+    C = (C - scl(1)) / (scl(2) - scl(1));
     
     % index 
     bins = linspace(0, 1, size(map, 1));
