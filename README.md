@@ -62,9 +62,9 @@ C = convert_colourmap(C, 'cool', [0 1]);
 ## External resources
 
 - **Getting tracts into MATLAB**: depends on the format. [MRtrix](https://www.mrtrix.org) comes with the MATLAB script (read_mrtrix_tracks) for reading .tck format.
-- **Saving mesh objects**: down to user. Some options:
+- **Saving mesh objects**: down to user. Some options:  
+  - [matlab2glb](https://github.com/dmitrishastin/glb_matlab) - much more flexible and compact. 
   - [write3mf](https://github.com/cvergari/write3mf.git) - works well with MS Office but the files are large and no transparency/alpha support is present. 
-  - [matlab2glb](https://github.com/dmitrishastin/glb_matlab) - much more flexible and compact. MS Office struggles to load large files and the rendering is off. More suited for online applications as can be demonstrated [here](https://gltf-viewer.donmccurdy.com/).
   - Other formats for MS Office: read [here](https://support.microsoft.com/en-us/office/3d-content-guidelines-for-microsoft-03a7b493-d549-4f1a-9735-f2457adf6261). 
 - **More on using mesh objects with MS Office**: ["Get creative with 3D models"](https://support.microsoft.com/en-us/office/get-creative-with-3d-models-ec5feb79-b0af-47f6-a885-151fcc88ac0a) and ["3D animation effects in PowerPoint"](https://support.microsoft.com/en-us/office/3d-animation-effects-in-powerpoint-6a0d6f0e-fd1e-4786-8e33-089375466d60)
  
